@@ -1,0 +1,5 @@
+appsettings.json
+appsettings.Development.json
+*.db
+/loggingway.db-shm
+/loggingway.db-wal
