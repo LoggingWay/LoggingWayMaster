@@ -17,6 +17,15 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
+      - name: Prepare deployment directory
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: loggingway.nl
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo chown -R deployuser:deployuser /opt/loggingway
+      
       - name: Publish
         run: dotnet publish -c Release -r linux-x64 --self-contained false -o ./publish
 
