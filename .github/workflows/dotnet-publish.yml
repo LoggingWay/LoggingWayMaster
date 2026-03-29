@@ -29,6 +29,7 @@ jobs:
           source: "./publish/*"
           target: /opt/loggingway/
           strip_components: 1
+          exclude: "appsettings.json"
 
       - name: Restart service
         uses: appleboy/ssh-action@v1.0.3
