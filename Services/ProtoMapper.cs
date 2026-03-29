@@ -25,7 +25,7 @@ namespace LoggingWayGrpcService.Services
         public static LoggingWayPlugin.Proto.Encounter ToProto(this DbEncounter e) => new()
         {
             EncounterId = e.Id,
-            ZoneId = (uint)(e.CfcId ?? 0),
+            CfcId = (uint)(e.CfcId ?? 0),
             UploadedAt = e.UploadedAt.ToUnixTimeSeconds(),
         };
   

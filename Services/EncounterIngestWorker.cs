@@ -50,6 +50,7 @@ namespace LoggingWayMaster.Services
                 Character = character.Id,
                 PlayerName = character.CharName,
                 EncounterId = encounter.Id,
+                
                 PlayerId = 0,//Gameobject id relative to parsed data
                 JobId = 0,
                 TotalPScore = 0,

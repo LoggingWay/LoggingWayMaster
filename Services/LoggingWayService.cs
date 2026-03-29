@@ -49,25 +49,30 @@ namespace LoggingWayGrpcService.Services
                 {
                     //another happy user,append all known characters
                     List<Entities.CharacterClaim> auth2db = new List<Entities.CharacterClaim>();
-                    foreach (var c in characters)
+                    if (characters != null)
                     {
-                        auth2db.Add(new Entities.CharacterClaim { 
-                            CharName = c.Name,
-                            HomeWorld = c.HomeWorld,
-                            DataCenter = c.DataCenter,
-                            PortraitUrl = c.PortraitUrl,
-                            AvatarUrl = c.AvatarUrl,
-                            XivAuthKey = c.PersistentKey,
-                            LodestoneId = int.Parse(c.LodestoneId),
-                        });
+                        foreach (var c in characters)
+                        {
+                            auth2db.Add(new Entities.CharacterClaim
+                            {
+                                CharName = c.Name,
+                                HomeWorld = c.HomeWorld,
+                                DataCenter = c.DataCenter,
+                                PortraitUrl = c.PortraitUrl,
+                                AvatarUrl = c.AvatarUrl,
+                                XivAuthKey = c.PersistentKey,
+                                LodestoneId = int.Parse(c.LodestoneId),
+                            });
+                        }
                     }
                     var new_user = conn.Users.Add(new Entities.User {Id = Guid.Parse(user.Id),
                                                                       Characters = auth2db,
                                                                     Banned = false,});
+
                     await conn.SaveChangesAsync();
+                        }
                 }
                 
-            }
             return new LoginReply { SessionID = session.SessionId };
         }
 
@@ -105,7 +110,14 @@ namespace LoggingWayGrpcService.Services
         public override async Task<NewEncounterReply> EncounterIngest(NewEncounterRequest request, ServerCallContext context)
         {
             SessionStore.Session user_se = EnsureAuth(context);
-
+            using (var conn = await dbFactory.CreateDbContextAsync())
+            {
+                var chars = await conn.CharacterClaims.Where(c => c.ClaimBy == user_se.XivAuthId).ToListAsync();
+                if (!chars.Any())
+                {
+                    throw new RpcException(new Status(StatusCode.FailedPrecondition, "No characters claimed, cannot upload encounters"));
+                }
+            }
             var job = new EncounterIngestJob(
         JobId: Guid.NewGuid(),
         UploadedBy: user_se.XivAuthId,
@@ -139,6 +151,42 @@ namespace LoggingWayGrpcService.Services
                 return new GetEncountersStatsReply{ Playerstats = stats.ToProto()};
             }
          }
+
+        public override async Task<GetLeaderBoardReply> GetLeaderBoard(GetLeaderBoardRequest request, ServerCallContext context)
+        {
+            SessionStore.Session user_se = EnsureAuth(context);
+            using (var db = await dbFactory.CreateDbContextAsync())
+            {
+
+                // join stats with their encounter and character claim
+                var query = db.EncounterPlayerStats
+                    .Include(s => s.CharacterClaim)
+                    .Include(s => s.Encounter)
+                    .Where(s => s.Encounter.CfcId == (int)request.CfcId
+                             && s.CharacterClaim != null);
+
+                
+                if (request.JobId != 0)
+                    query = query.Where(s => s.JobId == (int)request.JobId);
+
+                // For each character, keep only their best pscore run for this cfc_id
+                var bestScores = (await query.ToListAsync())//ToListAsync down there seem to make this untranslable?Memory issue probably
+                                .GroupBy(s => s.Character)
+                                .Select(g => g.OrderByDescending(s => s.TotalPScore).First())
+                                .OrderByDescending(s => s.TotalPScore)
+                                .ToList();
+
+                var totalRanked = bestScores.Count;
+
+                var entries = bestScores
+                    .Select((s, index) => s.CharacterClaim!.ToLeaderBoardEntry(s, rank: index + 1))
+                    .ToList();
+
+                var reply = new GetLeaderBoardReply { TotalRanked = totalRanked };
+                reply.Entry.AddRange(entries);
+                return reply;
+            }
+        }
         //Extension to deal with auth
 
         public SessionStore.Session EnsureAuth(ServerCallContext context)
