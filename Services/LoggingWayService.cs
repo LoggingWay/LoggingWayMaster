@@ -1,5 +1,6 @@
 using Google.Protobuf;
 using Grpc.Core;
+using LoggingWayGrpcService.Entities;
 using LoggingWayGrpcService.Stores;
 using LoggingWayMaster.Services;
 using LoggingWayPlugin.Proto;
@@ -39,9 +40,11 @@ namespace LoggingWayGrpcService.Services
             }
             catch (HttpRequestException ex)
             {
+                logger.LogError(ex, "Error during OAuth exchange");
                 throw new RpcException(new Status(StatusCode.Unauthenticated, "OAuth exchange failed"));
             }
             var session = sessionStore.CreateSession(user.Id);
+            var code = 0;//for now this only indicate if there are no xivauth chars
             using (var conn = await dbFactory.CreateDbContextAsync())
             {
                 var db_user = conn.Users.FirstOrDefault(u => u.Id == session.XivAuthId);
@@ -65,6 +68,10 @@ namespace LoggingWayGrpcService.Services
                             });
                         }
                     }
+                    if (characters == null)
+                    {
+                        code = 1;
+                    }
                     var new_user = conn.Users.Add(new Entities.User {Id = Guid.Parse(user.Id),
                                                                       Characters = auth2db,
                                                                     Banned = false,});
@@ -73,7 +80,7 @@ namespace LoggingWayGrpcService.Services
                         }
                 }
                 
-            return new LoginReply { SessionID = session.SessionId };
+            return new LoginReply { SessionID = session.SessionId, Code = code };
         }
 
         public override async Task<LogoutReply> Logout(LogoutRequest request, ServerCallContext context)
@@ -83,6 +90,82 @@ namespace LoggingWayGrpcService.Services
             return new LogoutReply { };
         }
 
+        public override Task<SessionRefreshReply> SessionRefresh(SessionRefreshRequest request, ServerCallContext context)
+        {
+            SessionStore.Session old_session = EnsureAuth(context);
+            var newSession = sessionStore.CreateSession(old_session.XivAuthId.ToString());
+
+            sessionStore.DeleteSession(old_session.SessionId);
+            return Task.FromResult(new SessionRefreshReply { SessionID = newSession.SessionId });
+        }
+
+        public override async Task<EnrollCharactersReply> EnrollCharacters(
+    EnrollCharactersRequest request,
+    ServerCallContext context)
+        {
+            SessionStore.Session user_session = EnsureAuth(context);
+
+            if (!stateStore.ValidateAndConsume(request.State))
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid or expired state"));
+
+            XivAuthUser user;
+            List<XivAuthCharacter>? freshCharacters;
+            try
+            {
+                (user, freshCharacters) = await xivAuth.GetUserInfoFromCode(request.Code);
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogError(ex, "Error during OAuth exchange");
+                throw new RpcException(new Status(StatusCode.Unauthenticated, "OAuth exchange failed"));
+            }
+
+            if (freshCharacters is null)
+                throw new RpcException(new Status(StatusCode.FailedPrecondition, "characters:all scope was not granted"));
+            if (Guid.Parse(user.Id) != user_session.XivAuthId)
+                throw new RpcException(new Status(StatusCode.PermissionDenied, "XivAuthId from session does not match XivAuthId from code exchange,please logout and login if you wish to change account"));
+            using (var db = await dbFactory.CreateDbContextAsync()){
+
+                // Fetch what we already have on record for this user
+                var existingClaims = await db.CharacterClaims
+                    .Where(c => c.ClaimBy == user_session.XivAuthId)
+                    .ToListAsync();
+
+                var existingKeys = existingClaims.Select(c => c.XivAuthKey).ToHashSet();
+                var freshKeys = freshCharacters.Select(c => c.PersistentKey).ToHashSet();
+
+                var toAdd = freshCharacters
+                    .Where(c => !existingKeys.Contains(c.PersistentKey))
+                    .Select(c => new CharacterClaim
+                    {
+                        Id = Guid.NewGuid(),
+                        ClaimBy = user_session.XivAuthId,
+                        XivAuthKey = c.PersistentKey,
+                        CharName = c.Name,
+                        DataCenter = c.DataCenter,
+                        HomeWorld = c.HomeWorld,
+                        LodestoneId = int.Parse(c.LodestoneId),
+                        AvatarUrl = c.AvatarUrl,
+                        PortraitUrl = c.PortraitUrl,
+                        ClaimRegistered = DateTimeOffset.UtcNow,
+                    });
+
+                //Remove characters that are no longer in the XIVAuth response
+                var toRemove = existingClaims
+                    .Where(c => !freshKeys.Contains(c.XivAuthKey))
+                    .ToList();
+
+                db.CharacterClaims.AddRange(toAdd);
+                db.CharacterClaims.RemoveRange(toRemove);
+                await db.SaveChangesAsync();
+
+                logger.LogInformation(
+                    "EnrollCharacters for user {UserId}: +{Added} added, -{Removed} removed",
+                    user_session.XivAuthId, toAdd.Count(), toRemove.Count);
+
+            }
+            return new EnrollCharactersReply();
+        }
         public override async Task<GetMyCharactersReply> GetMyCharacters(GetMyCharactersRequest request, ServerCallContext context)
         {
             SessionStore.Session user_se = EnsureAuth(context);
