@@ -15,27 +15,27 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 9.0.x
 
       - name: Publish
         run: dotnet publish -c Release -r linux-x64 --self-contained false -o ./publish
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Add server to known hosts
-        run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -H loggingway.nl >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
-
       - name: Copy to server
-        run: |
-          scp -r ./publish/* deployuser@loggingway.nl:/opt/loggingway/
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: loggingway.nl
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "./publish/*"
+          target: /opt/loggingway/
+          strip_components: 1
 
       - name: Restart service
-        run: |
-          ssh deployuser@loggingway.nl "sudo chown -R loggingway:loggingway /opt/loggingway && sudo systemctl restart loggingway"
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: loggingway.nl
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo chown -R loggingway:loggingway /opt/loggingway
+            sudo systemctl restart loggingway
