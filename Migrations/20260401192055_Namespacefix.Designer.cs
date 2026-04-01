@@ -3,6 +3,7 @@ using System;
 using LoggingWayMaster.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LoggingWayMaster.Migrations
 {
     [DbContext(typeof(LoggingwayDbContext))]
-    partial class LoggingwayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260401192055_Namespacefix")]
+    partial class Namespacefix
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
