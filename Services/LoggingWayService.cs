@@ -1,16 +1,16 @@
 using Google.Protobuf;
 using Grpc.Core;
-using LoggingWayGrpcService.Entities;
-using LoggingWayGrpcService.Stores;
+using LoggingWayMaster.Entities;
+using LoggingWayMaster.Stores;
 using LoggingWayMaster.Services;
 using LoggingWayMaster.Stores;
 using LoggingWayPlugin.Proto;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using static LoggingWayGrpcService.Stores.SessionStore;
+using static LoggingWayMaster.Stores.SessionStore;
 
-namespace LoggingWayGrpcService.Services
+namespace LoggingWayMaster.Services
 {
     public class LoggingWayService(OAuthStateStore stateStore,
         SessionStore sessionStore,

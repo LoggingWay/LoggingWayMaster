@@ -1,5 +1,3 @@
-using LoggingWayGrpcService.Services;
-using LoggingWayGrpcService.Stores;
 using LoggingWayMaster.Services;
 using LoggingWayMaster.Stores;
 using Microsoft.EntityFrameworkCore;
