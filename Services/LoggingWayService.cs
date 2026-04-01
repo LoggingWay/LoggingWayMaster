@@ -3,6 +3,7 @@ using Grpc.Core;
 using LoggingWayGrpcService.Entities;
 using LoggingWayGrpcService.Stores;
 using LoggingWayMaster.Services;
+using LoggingWayMaster.Stores;
 using LoggingWayPlugin.Proto;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.CompilerServices;
@@ -13,6 +14,7 @@ namespace LoggingWayGrpcService.Services
 {
     public class LoggingWayService(OAuthStateStore stateStore,
         SessionStore sessionStore,
+        JobResultStore jobResultStore,
         XivAuthClient xivAuth,
         IDbContextFactory<LoggingwayDbContext> dbFactory,
         EncounterIngestQueue ingestQueue,
@@ -209,9 +211,12 @@ namespace LoggingWayGrpcService.Services
         QueuedAt: DateTimeOffset.UtcNow
                                     );
 
-            var queued = await ingestQueue.TryEnqueueAsync(job,context.CancellationToken);
-            if (!queued)
-                throw new RpcException(new Status(StatusCode.Unavailable, "Ingest queue insertion error"));
+            jobResultStore.Register(job.JobId);
+            if (!await ingestQueue.TryEnqueueAsync(job, context.CancellationToken))
+            {
+                jobResultStore.TryFail(job.JobId, new Exception("queue full"));
+                throw new RpcException(new Status(StatusCode.Unavailable, "Ingest queue full"));
+            }
 
             return new NewEncounterReply
             {
@@ -219,6 +224,30 @@ namespace LoggingWayGrpcService.Services
                 QueuedAt = job.QueuedAt.ToUnixTimeSeconds(),
             };
 
+        }
+
+        public override async Task<PollJobResultReply> PollJobResult(
+    PollJobResultRequest request, ServerCallContext context)
+        {
+            EnsureAuth(context);
+
+            if (!Guid.TryParse(request.JobId, out var jobId))
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid job_id"));
+
+            // wait 10 second before calling it
+            var result = await jobResultStore.WaitAsync(jobId, TimeSpan.FromSeconds(10), context.CancellationToken);
+
+            if (result is null)
+                return new PollJobResultReply { Ready = false };
+
+            return new PollJobResultReply
+            {
+                Ready = true,
+                EncounterId = result.EncounterId,
+                Rank = result.Rank,
+                TotalRanked = result.TotalRanked,
+                Pscore = result.PScore,
+            };
         }
 
         public override async Task<GetEncountersStatsReply> GetEncountersStats(GetEncountersStatsRequest request, ServerCallContext context)

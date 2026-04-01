@@ -1,6 +1,7 @@
 using LoggingWayGrpcService.Services;
 using LoggingWayGrpcService.Stores;
 using LoggingWayMaster.Services;
+using LoggingWayMaster.Stores;
 using Microsoft.EntityFrameworkCore;
 
 namespace LoggingWayMaster
@@ -15,6 +16,7 @@ namespace LoggingWayMaster
             builder.Services.AddGrpc();
             builder.Services.AddSingleton<OAuthStateStore>();
             builder.Services.AddSingleton<SessionStore>();
+            builder.Services.AddSingleton<JobResultStore>();
             builder.Services.AddHttpClient<XivAuthClient>();
             builder.Services.AddSingleton<EncounterIngestQueue>();
             //Hosted Services(things that run continously in the background like the IngestWorker)
