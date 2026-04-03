@@ -1,4 +1,4 @@
-﻿namespace LoggingWayGrpcService.Entities
+﻿namespace LoggingWayMaster.Entities
 {
     public class User
     {

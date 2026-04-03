@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.64.0" />
+    <PackageReference Include="Lumina" Version="7.3.0" />
+    <PackageReference Include="Lumina.Excel" Version="7.4.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
       <PrivateAssets>all</PrivateAssets>

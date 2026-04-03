@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LoggingWayMaster.Migrations
 {
     [DbContext(typeof(LoggingwayDbContext))]
-    [Migration("20260328204045_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260401192055_Namespacefix")]
+    partial class Namespacefix
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -20,7 +20,7 @@ namespace LoggingWayMaster.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
 
-            modelBuilder.Entity("LoggingWayGrpcService.Entities.CharacterClaim", b =>
+            modelBuilder.Entity("LoggingWayMaster.Entities.CharacterClaim", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -77,7 +77,7 @@ namespace LoggingWayMaster.Migrations
                     b.ToTable("characters_claim", (string)null);
                 });
 
-            modelBuilder.Entity("LoggingWayGrpcService.Entities.Encounter", b =>
+            modelBuilder.Entity("LoggingWayMaster.Entities.Encounter", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -108,7 +108,7 @@ namespace LoggingWayMaster.Migrations
                     b.ToTable("encounters", (string)null);
                 });
 
-            modelBuilder.Entity("LoggingWayGrpcService.Entities.EncounterPlayerStat", b =>
+            modelBuilder.Entity("LoggingWayMaster.Entities.EncounterPlayerStat", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -208,7 +208,7 @@ namespace LoggingWayMaster.Migrations
                     b.ToTable("encounter_player_stats", (string)null);
                 });
 
-            modelBuilder.Entity("LoggingWayGrpcService.Entities.User", b =>
+            modelBuilder.Entity("LoggingWayMaster.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -226,37 +226,37 @@ namespace LoggingWayMaster.Migrations
                     b.ToTable("users", (string)null);
                 });
 
-            modelBuilder.Entity("LoggingWayGrpcService.Entities.CharacterClaim", b =>
+            modelBuilder.Entity("LoggingWayMaster.Entities.CharacterClaim", b =>
                 {
-                    b.HasOne("LoggingWayGrpcService.Entities.User", "Owner")
+                    b.HasOne("LoggingWayMaster.Entities.User", "Owner")
                         .WithMany("Characters")
                         .HasForeignKey("ClaimBy");
 
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("LoggingWayGrpcService.Entities.Encounter", b =>
+            modelBuilder.Entity("LoggingWayMaster.Entities.Encounter", b =>
                 {
-                    b.HasOne("LoggingWayGrpcService.Entities.User", "Uploader")
+                    b.HasOne("LoggingWayMaster.Entities.User", "Uploader")
                         .WithMany("Encounters")
                         .HasForeignKey("UploadedBy");
 
                     b.Navigation("Uploader");
                 });
 
-            modelBuilder.Entity("LoggingWayGrpcService.Entities.EncounterPlayerStat", b =>
+            modelBuilder.Entity("LoggingWayMaster.Entities.EncounterPlayerStat", b =>
                 {
-                    b.HasOne("LoggingWayGrpcService.Entities.CharacterClaim", "CharacterClaim")
+                    b.HasOne("LoggingWayMaster.Entities.CharacterClaim", "CharacterClaim")
                         .WithMany("PlayerStats")
                         .HasForeignKey("Character");
 
-                    b.HasOne("LoggingWayGrpcService.Entities.Encounter", "Encounter")
+                    b.HasOne("LoggingWayMaster.Entities.Encounter", "Encounter")
                         .WithMany("PlayerStats")
                         .HasForeignKey("EncounterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("LoggingWayGrpcService.Entities.User", "Uploader")
+                    b.HasOne("LoggingWayMaster.Entities.User", "Uploader")
                         .WithMany()
                         .HasForeignKey("UploadedBy");
 
@@ -267,17 +267,17 @@ namespace LoggingWayMaster.Migrations
                     b.Navigation("Uploader");
                 });
 
-            modelBuilder.Entity("LoggingWayGrpcService.Entities.CharacterClaim", b =>
+            modelBuilder.Entity("LoggingWayMaster.Entities.CharacterClaim", b =>
                 {
                     b.Navigation("PlayerStats");
                 });
 
-            modelBuilder.Entity("LoggingWayGrpcService.Entities.Encounter", b =>
+            modelBuilder.Entity("LoggingWayMaster.Entities.Encounter", b =>
                 {
                     b.Navigation("PlayerStats");
                 });
 
-            modelBuilder.Entity("LoggingWayGrpcService.Entities.User", b =>
+            modelBuilder.Entity("LoggingWayMaster.Entities.User", b =>
                 {
                     b.Navigation("Characters");
 
