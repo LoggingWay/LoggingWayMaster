@@ -14,6 +14,7 @@ namespace LoggingWayMaster.Services
     public class EncounterIngestWorker(
     EncounterIngestQueue queue,
     JobResultStore jobResultStore,
+    Lumina.GameData lumina,
     IDbContextFactory<LoggingwayDbContext> dbFactory,
     ILogger<EncounterIngestWorker> logger) : BackgroundService
     {
@@ -43,7 +44,7 @@ namespace LoggingWayMaster.Services
             logger.LogInformation("Processing ingest job {JobId}", job.JobId);
 
             await using var db = await dbFactory.CreateDbContextAsync(ct);
-
+            var cfc = lumina.GetExcelSheet<Lumina.Excel.Sheets.ContentFinderCondition>();
             // Parsing logic would go somewhere here
             var encounter = new Encounter
             {
