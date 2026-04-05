@@ -323,6 +323,8 @@ new Modifiers(440, 420, 2780) };
                                     logger.LogInformation($"Potency Before ({Name}): {Estimated_Potency}");
                                     if (Thresholds.ContainsKey(Name)) Estimated_Potency = Thresholds[Name].MinBy(X => Math.Abs(X - Estimated_Potency));
                                     logger.LogInformation($"Potency After ({Name}): {Estimated_Potency}");
+                                    logger.LogInformation($"Character Multiplier: {Character_Multiplier}");
+                                    logger.LogInformation($"Character Baseline: {Baselines[Message.Source.GameobjectId]}");
                                     if (Name == "Flare")
                                     {
                                         if (Message.DamageTaken.MainTarget && Estimated_Potency == 235) Estimated_Potency = 240;
