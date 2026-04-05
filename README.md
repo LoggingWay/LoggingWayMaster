@@ -31,8 +31,6 @@ git clone --recurse-submodules https://github.com/LoggingWay/LoggingWayMaster.gi
 cd LoggingWayMaster
 
 dotnet restore
-dotnet ef migrations add InitialCreate 
-dotnet ef database update
 ```
-The last two are required to create the initial db migration state, you can switch between SQLite and PGSQL as provider for EF by changing which one gets used in `Program.cs`
+You can switch between SQLite and PGSQL as provider for EF by changing which one gets used in `Program.cs`
 Normally you should be prompted by VS to add a localhost certificate to enable TLS locally, it is recommended you do so, but the environement does also open an http port.

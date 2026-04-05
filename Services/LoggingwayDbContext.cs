@@ -1,8 +1,8 @@
-﻿using LoggingWayGrpcService.Entities;
+﻿using LoggingWayMaster.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace LoggingWayGrpcService.Services
+namespace LoggingWayMaster.Services
 {
     public class LoggingwayDbContext(DbContextOptions<LoggingwayDbContext> options) : DbContext(options)
     {

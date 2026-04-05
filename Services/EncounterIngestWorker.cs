@@ -1,27 +1,41 @@
-﻿using LoggingWayGrpcService.Entities;
-using LoggingWayGrpcService.Services;
+﻿using LoggingWayMaster.Entities;
+using LoggingWayMaster.Services;
+using LoggingWayMaster.Stores;
 using Microsoft.EntityFrameworkCore;
 
 namespace LoggingWayMaster.Services
 {
+    public record EncounterIngestResult(
+    long EncounterId,
+    long Rank,
+    long TotalRanked,
+    float PScore
+);
     public class EncounterIngestWorker(
     EncounterIngestQueue queue,
+    JobResultStore jobResultStore,
+    Lumina.GameData lumina,
     IDbContextFactory<LoggingwayDbContext> dbFactory,
     ILogger<EncounterIngestWorker> logger) : BackgroundService
     {
+        private const int MaxConcurrency = 8;
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            var semaphore = new SemaphoreSlim(MaxConcurrency);
             await foreach (var job in queue.Reader.ReadAllAsync(stoppingToken))
             {
-                try
+                await semaphore.WaitAsync(stoppingToken);
+                _ = Task.Run(async () =>
                 {
-                    await ProcessAsync(job, stoppingToken);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to process ingest job {JobId}", job.JobId);
-                    // job is dropped for now,in the future we might want some kind salvage/retry system,this used to be handled by redis but w/e
-                }
+                    try { await ProcessAsync(job, stoppingToken); }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "Failed to process ingest job {JobId}", job.JobId);
+                        jobResultStore.TryFail(job.JobId, ex);
+                    }
+                    finally { semaphore.Release(); }
+                }, stoppingToken);
             }
         }
 
@@ -30,7 +44,7 @@ namespace LoggingWayMaster.Services
             logger.LogInformation("Processing ingest job {JobId}", job.JobId);
 
             await using var db = await dbFactory.CreateDbContextAsync(ct);
-
+            var cfc = lumina.GetExcelSheet<Lumina.Excel.Sheets.ContentFinderCondition>();
             // Parsing logic would go somewhere here
             var encounter = new Encounter
             {
@@ -71,6 +85,10 @@ namespace LoggingWayMaster.Services
 
             logger.LogInformation("Ingest job {JobId} persisted as encounter {EncounterId}",
                 job.JobId, encounter.Id);
+
+            jobResultStore.TryComplete(job.JobId, new EncounterIngestResult(
+            EncounterId: encounter.Id,
+            Rank: 0, TotalRanked: 0, PScore: 0f));
         }
     }
 }

@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace LoggingWayGrpcService.Services
+namespace LoggingWayMaster.Services
 {
     public record XivAuthUser(
     [property: JsonPropertyName("id")] string Id,

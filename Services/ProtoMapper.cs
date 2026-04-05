@@ -1,8 +1,8 @@
-﻿using LoggingWayGrpcService.Entities;
+﻿using LoggingWayMaster.Entities;
 using LoggingWayPlugin.Proto;
 using System.Runtime.CompilerServices;
-using DbEncounter = LoggingWayGrpcService.Entities.Encounter;
-namespace LoggingWayGrpcService.Services
+using DbEncounter = LoggingWayMaster.Entities.Encounter;
+namespace LoggingWayMaster.Services
 {
     //Helper class that maps Proto<>Entities
     //Most of it should be Entities>Proto conversion

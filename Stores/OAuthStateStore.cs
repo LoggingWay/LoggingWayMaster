@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Security.Cryptography;
 
-namespace LoggingWayGrpcService.Stores
+namespace LoggingWayMaster.Stores
 {
     public class OAuthStateStore
     {
