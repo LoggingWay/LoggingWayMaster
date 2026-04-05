@@ -207,8 +207,10 @@ new Modifiers(440, 420, 2780) };
             await using var db = await dbFactory.CreateDbContextAsync(ct);
             var Join_Mapping = new Dictionary<ulong, PlayerEnterCombat>();
             var Potencies = new Dictionary<ulong, double>();
+            var Hits = new Dictionary<ulong, int>();
             var Baselines = new Dictionary<ulong, double>();
             var Events = NewEncounterRequest.Parser.ParseFrom(job.Payload).Events;
+            long Start = 0;
             foreach (var Message in Events)
             {
                 switch (Message.EventDataCase)
@@ -217,6 +219,8 @@ new Modifiers(440, 420, 2780) };
                         {
                             Join_Mapping[Message.Source.GameobjectId] = Message.PlayerJoin;
                             Potencies[Message.Source.GameobjectId] = 0.0;
+                            Hits[Message.Source.GameobjectId] = 0;
+                            if (Start == 0) Start = Message.TimestampEpochMs;
                             break;
                         }
                     case CombatEvent.EventDataOneofCase.StatusEffect:
@@ -335,6 +339,7 @@ new Modifiers(440, 420, 2780) };
                                         (Magic ? Internal_Magical_Buff_Multiplier : Internal_Physical_Buff_Multiplier) *
                                         Character_Multiplier / Baselines[Message.Source.GameobjectId]
                                         ) / 1000d;
+                                    Hits[Message.Source.GameobjectId]++;
                                 }
                             }
                             break;
@@ -356,7 +361,7 @@ new Modifiers(440, 420, 2780) };
             await db.SaveChangesAsync(ct);
 
             //Temp attributions, in real logic, this will be dervied from the parse itself
-            var Duration = Math.Round((double)(Events.Last().TimestampEpochMs - Events.First().TimestampEpochMs)) / 1000.0;
+            var Duration = Math.Round((double)(Events.Last().TimestampEpochMs - Start)) / 1000.0;
             foreach (var Character in Join_Mapping.Keys)
             {
                 var character = db.CharacterClaims.FirstOrDefault(c => c.ClaimBy == job.UploadedBy);
