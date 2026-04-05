@@ -225,14 +225,17 @@ new Modifiers(440, 420, 2780) };
                         }
                     case CombatEvent.EventDataOneofCase.DamageTaken:
                         {
-                            var Player = Join_Mapping[Message.Source.GameobjectId];
-                            var State = Message.LocalSnapshot;
-                            var Level_Modifier = Level_Modifiers[(int)Player.Level - 1];
-                            var Level_Attack_Modifier = Tanks.Contains(Player.JobId) ? (Player.Level - 90) * 3.4 + 156 : (Player.Level - 90) * 4.2 + 195;
-                            var Attack = Math.Floor(100 + Level_Attack_Modifier * (State.AttackPower - Level_Modifier.Main) / Level_Modifier.Main) / 100;
-                            double Character_Multiplier = (Casters.Contains(Player.JobId) ? 1.3 : (Physical_Ranged.Contains(Player.JobId) ? 1.2 : 1.0)) * (Tanks.Contains(Player.JobId) ? Math.Floor(112d * (State.Tenacity - Level_Modifier.Sub) / Level_Modifier.Div) / 1000d : 1.0) * Math.Floor(100 * Attack * Player.WeaponDamage) / 100;
-                            var Statuses = Message.SourceSnapshot.StatusEffects.ToArray().Select(X => (int)X.Id);
-                            if (!Statuses.Contains(44) && !Statuses.Contains(43) && Statuses.Contains(48) && !Statuses.Contains(49)) Baselines[Player.GameobjectId] = Character_Multiplier;
+                            if (Join_Mapping.ContainsKey(Message.Source.GameobjectId))
+                            {
+                                var Player = Join_Mapping[Message.Source.GameobjectId];
+                                var State = Message.LocalSnapshot;
+                                var Level_Modifier = Level_Modifiers[(int)Player.Level - 1];
+                                var Level_Attack_Modifier = Tanks.Contains(Player.JobId) ? (Player.Level - 90) * 3.4 + 156 : (Player.Level - 90) * 4.2 + 195;
+                                var Attack = Math.Floor(100 + Level_Attack_Modifier * (State.AttackPower - Level_Modifier.Main) / Level_Modifier.Main) / 100;
+                                double Character_Multiplier = (Casters.Contains(Player.JobId) ? 1.3 : (Physical_Ranged.Contains(Player.JobId) ? 1.2 : 1.0)) * (Tanks.Contains(Player.JobId) ? Math.Floor(112d * (State.Tenacity - Level_Modifier.Sub) / Level_Modifier.Div) / 1000d : 1.0) * Math.Floor(100 * Attack * Player.WeaponDamage) / 100;
+                                var Statuses = Message.SourceSnapshot.StatusEffects.ToArray().Select(X => (int)X.Id);
+                                if (!Statuses.Contains(44) && !Statuses.Contains(43) && Statuses.Contains(48) && !Statuses.Contains(49)) Baselines[Player.GameobjectId] = Character_Multiplier;
+                            }
                             break;
                         }
                 }
