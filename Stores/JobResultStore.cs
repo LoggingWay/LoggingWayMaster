@@ -1,5 +1,11 @@
 ﻿using LoggingWayMaster.Services;
 using System.Collections.Concurrent;
+public record EncounterIngestResult(
+    long EncounterId,
+    long Rank,
+    long TotalRanked,
+    float PScore
+);
 
 namespace LoggingWayMaster.Stores
 {
