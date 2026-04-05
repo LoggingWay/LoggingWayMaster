@@ -17,6 +17,21 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
+      - name: Retrieve cache
+        id: cache-exd
+        uses: actions/cache@v4
+        with:
+          path: exd-data
+          key: exd-files-data-${{hashFiles('exd-data/.cachemeta.json')}}
+          restore-keys: |
+            exd-files-data-
+
+      - name: Download EXD Files
+        uses: WorkingRobot/ffxiv-downloader@v8.1.3
+        with:
+          output-path: exd-data
+          regex: '^sqpack\/ffxiv\/0a0000\..+$'
+
       - name: Prepare deployment directory
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -25,7 +40,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             sudo chown -R deployuser:deployuser /opt/loggingway
-      
+
       - name: Publish
         run: dotnet publish -c Release -r linux-x64 --self-contained false -o ./publish
 
@@ -39,6 +54,17 @@ jobs:
           target: /opt/loggingway/
           strip_components: 1
           exclude: "appsettings.json"
+
+      - name: Copy EXD files to server
+        if: steps.cache-exd.outputs.cache-hit != 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: loggingway.nl
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "./exd-data/*"
+          target: /opt/loggingway/exd-data/
+          strip_components: 1
 
       - name: Restart service
         uses: appleboy/ssh-action@v1.0.3
