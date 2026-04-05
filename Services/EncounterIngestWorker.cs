@@ -320,7 +320,9 @@ new Modifiers(440, 420, 2780) };
                                     var Multiplier = Local_Buffs * Typed_Multiplier * Character_Multiplier * Determination_Multiplier * (Message.DamageTaken.DirectHit ? 1.25 : 1.0) * (Message.DamageTaken.Crit ? Critical_Multiplier : 1.0);
                                     var Estimated_Potency = (uint)Math.Round(Message.DamageTaken.Amount / Multiplier) * 1d;
                                     var Original_Potency_Estimation = Estimated_Potency;
+                                    logger.LogInformation($"Potency Before ({Name}): {Estimated_Potency}");
                                     if (Thresholds.ContainsKey(Name)) Estimated_Potency = Thresholds[Name].MinBy(X => Math.Abs(X - Estimated_Potency));
+                                    logger.LogInformation($"Potency After ({Name}): {Estimated_Potency}");
                                     if (Name == "Flare")
                                     {
                                         if (Message.DamageTaken.MainTarget && Estimated_Potency == 235) Estimated_Potency = 240;
