@@ -223,18 +223,32 @@ new Modifiers(440, 420, 2780) };
                             if (Start == 0) Start = Message.TimestampEpochMs;
                             break;
                         }
-                    case CombatEvent.EventDataOneofCase.StatusEffect:
+                    case CombatEvent.EventDataOneofCase.DamageTaken:
                         {
-
+                            var Player = Join_Mapping[Message.Source.GameobjectId];
+                            var State = Message.LocalSnapshot;
+                            var Level_Modifier = Level_Modifiers[(int)Player.Level - 1];
+                            var Level_Attack_Modifier = Tanks.Contains(Player.JobId) ? (Player.Level - 90) * 3.4 + 156 : (Player.Level - 90) * 4.2 + 195;
+                            var Attack = Math.Floor(100 + Level_Attack_Modifier * (State.AttackPower - Level_Modifier.Main) / Level_Modifier.Main) / 100;
+                            double Character_Multiplier = (Casters.Contains(Player.JobId) ? 1.3 : (Physical_Ranged.Contains(Player.JobId) ? 1.2 : 1.0)) * (Tanks.Contains(Player.JobId) ? Math.Floor(112d * (State.Tenacity - Level_Modifier.Sub) / Level_Modifier.Div) / 1000d : 1.0) * Math.Floor(100 * Attack * Player.WeaponDamage) / 100;
+                            var Statuses = Message.SourceSnapshot.StatusEffects.ToArray().Select(X => (int)X.Id);
+                            if (!Statuses.Contains(44) && !Statuses.Contains(43) && Statuses.Contains(48) && !Statuses.Contains(49)) Baselines[Player.GameobjectId] = Character_Multiplier;
                             break;
                         }
+                }
+            }
+
+            foreach (var Message in Events)
+            {
+                switch (Message.EventDataCase)
+                {
                     case CombatEvent.EventDataOneofCase.Death:
                         {
                             break;
                         }
                     case CombatEvent.EventDataOneofCase.DamageTaken:
                         {
-                            if (Join_Mapping.ContainsKey(Message.Source.GameobjectId))
+                            if (Baselines.ContainsKey(Message.Source.GameobjectId))
                             {
                                 var Player = Join_Mapping[Message.Source.GameobjectId];
                                 var ID = Message.DamageTaken.ActionId;
@@ -242,18 +256,15 @@ new Modifiers(440, 420, 2780) };
                                 var Type = 0;
                                 var Speed_Scalar = 1.0;
                                 var State = Message.LocalSnapshot;
-                                var Statuses = Message.SourceSnapshot.StatusEffects.ToArray().Select(X => (int)X.Id);
                                 var Level_Modifier = Level_Modifiers[(int)Player.Level - 1];
-                                var Attack_Power = State.AttackPower;
                                 var Level_Attack_Modifier = Tanks.Contains(Player.JobId) ? (Player.Level - 90) * 3.4 + 156 : (Player.Level - 90) * 4.2 + 195;
-                                var Attack = Math.Floor(100 + Level_Attack_Modifier * (Attack_Power - Level_Modifier.Main) / Level_Modifier.Main) / 100;
+                                var Attack = Math.Floor(100 + Level_Attack_Modifier * (State.AttackPower - Level_Modifier.Main) / Level_Modifier.Main) / 100;
+                                double Character_Multiplier = (Casters.Contains(Player.JobId) ? 1.3 : (Physical_Ranged.Contains(Player.JobId) ? 1.2 : 1.0)) * (Tanks.Contains(Player.JobId) ? Math.Floor(112d * (State.Tenacity - Level_Modifier.Sub) / Level_Modifier.Div) / 1000d : 1.0) * Math.Floor(100 * Attack * Player.WeaponDamage) / 100;
                                 double Skill_Speed = 1000.0 + Math.Ceiling(130.0 * (Level_Modifier.Sub - State.Skillspeed) / Level_Modifier.Div);
                                 double Spell_Speed = 1000.0 + Math.Ceiling(130.0 * (Level_Modifier.Sub - State.Spellspeed) / Level_Modifier.Div);
-                                double Character_Multiplier = (Casters.Contains(Player.JobId) ? 1.3 : (Physical_Ranged.Contains(Player.JobId) ? 1.2 : 1.0)) * (Tanks.Contains(Player.JobId) ? Math.Floor(112d * (State.Tenacity - Level_Modifier.Sub) / Level_Modifier.Div) / 1000d : 1.0) * Math.Floor(100 * Attack * Player.WeaponDamage) / 100;
                                 //if (Player.JobId == 25) if (Gauge_Manager->BlackMage.EnochianActive) New_Internal_Magical_Buff_Multiplier *= 1.27;
                                 double Determination_Multiplier = 1.0 + Math.Floor(140d * (State.Determination - Level_Modifier.Main) / Level_Modifier.Div) / 1000d;
                                 double Critical_Multiplier = Math.Floor(200d * (State.CriticalHit - Level_Modifier.Sub) / Level_Modifier.Div + 1400) / 1000d;
-                                if (!Statuses.Contains(44) && !Statuses.Contains(43) && !Statuses.Contains(48) && !Statuses.Contains(49)) Baselines[Player.GameobjectId] = Character_Multiplier;
                                 double External_Physical_Buff_Multiplier = 1.0;
                                 double External_Magical_Buff_Multiplier = 1.0;
                                 double Internal_Physical_Buff_Multiplier = 1.0;
@@ -366,7 +377,7 @@ new Modifiers(440, 420, 2780) };
 
             //Temp attributions, in real logic, this will be dervied from the parse itself
             var Duration = Math.Round((double)(Events.Last().TimestampEpochMs - Start)) / 1000.0;
-            foreach (var Character in Join_Mapping.Keys)
+            foreach (var Character in Baselines.Keys)
             {
                 var character = db.CharacterClaims.FirstOrDefault(c => c.ClaimBy == job.UploadedBy);
                 var stats = new EncounterPlayerStat
