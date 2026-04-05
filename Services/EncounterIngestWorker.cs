@@ -241,7 +241,7 @@ new Modifiers(440, 420, 2780) };
                                 var Statuses = Message.SourceSnapshot.StatusEffects.ToArray().Select(X => (int)X.Id);
                                 var Level_Modifier = Level_Modifiers[(int)Player.Level - 1];
                                 var Attack_Power = State.AttackPower;
-                                 var Level_Attack_Modifier = Tanks.Contains(Player.JobId) ? (Player.Level - 90) * 3.4 + 156 : (Player.Level - 90) * 4.2 + 195;
+                                var Level_Attack_Modifier = Tanks.Contains(Player.JobId) ? (Player.Level - 90) * 3.4 + 156 : (Player.Level - 90) * 4.2 + 195;
                                 var Attack = Math.Floor(100 + Level_Attack_Modifier * (Attack_Power - Level_Modifier.Main) / Level_Modifier.Main) / 100;
                                 double Skill_Speed = 1000.0 + Math.Ceiling(130.0 * (Level_Modifier.Sub - State.Skillspeed) / Level_Modifier.Div);
                                 double Spell_Speed = 1000.0 + Math.Ceiling(130.0 * (Level_Modifier.Sub - State.Spellspeed) / Level_Modifier.Div);
@@ -255,20 +255,20 @@ new Modifiers(440, 420, 2780) };
                                 double Internal_Physical_Buff_Multiplier = 1.0;
                                 double Internal_Magical_Buff_Multiplier = 1.0;
                                 List<string> Named = [];
-                                foreach (var Status in Message.SourceSnapshot.StatusEffects) if (Status.SourceId == Player.GameobjectId)
-                                    {
-                                        Internal_Physical_Buff_Multiplier *= Buffs[(int)Status.Id].Physical;
-                                        Internal_Magical_Buff_Multiplier *= Buffs[(int)Status.Id].Magical;
-                                        Named.Add(lumina.GetExcelSheet<Lumina.Excel.Sheets.Status>().GetRow(Status.Id).Name.ExtractText());
-                                    }
-                                    else
-                                    {
-                                        External_Physical_Buff_Multiplier *= Buffs[(int)Status.Id].Physical;
-                                        External_Magical_Buff_Multiplier *= Buffs[(int)Status.Id].Magical;
-                                    }
+                                foreach (var Status in Message.SourceSnapshot.StatusEffects) if (Buffs.ContainsKey((int)Status.Id)) if (Status.SourceId == Player.GameobjectId)
+                                        {
+                                            Internal_Physical_Buff_Multiplier *= Buffs[(int)Status.Id].Physical;
+                                            Internal_Magical_Buff_Multiplier *= Buffs[(int)Status.Id].Magical;
+                                            Named.Add(lumina.GetExcelSheet<Lumina.Excel.Sheets.Status>().GetRow(Status.Id).Name.ExtractText());
+                                        }
+                                        else
+                                        {
+                                            External_Physical_Buff_Multiplier *= Buffs[(int)Status.Id].Physical;
+                                            External_Magical_Buff_Multiplier *= Buffs[(int)Status.Id].Magical;
+                                        }
                                 foreach (var Status in Message.TargetSnapshot.StatusEffects)
                                 {
-
+                                    // Chain Stratagem, Dokumori
                                 }
                                 if (lumina.GetExcelSheet<Lumina.Excel.Sheets.Action>().TryGetRow(ID, out var N))
                                 {
