@@ -366,6 +366,7 @@ new Modifiers(440, 420, 2780) };
             }
 
             // Parsing logic would go somewhere here
+
             var encounter = new Entities.Encounter
             {
                 CfcId = (int?)job.CfcId,//DBs don't like unsigned
@@ -373,11 +374,11 @@ new Modifiers(440, 420, 2780) };
                 UploadedAt = job.QueuedAt,
                 Payload = job.Payload,
             };
-
-
-            var enc = db.Encounters.Add(encounter);
-            await db.SaveChangesAsync(ct);
-
+            if (Baselines.Keys.Count > 0)
+            {
+                db.Encounters.Add(encounter);
+                await db.SaveChangesAsync(ct);
+            }
             //Temp attributions, in real logic, this will be dervied from the parse itself
             var Duration = Math.Round((double)(Events.Last().TimestampEpochMs - Start)) / 1000.0;
             foreach (var Character in Baselines.Keys)
