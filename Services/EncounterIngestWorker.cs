@@ -1,4 +1,5 @@
 ﻿using LoggingWayMaster.Entities;
+using LoggingWayMaster.Stores;
 using LoggingWayPlugin.Proto;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -10,6 +11,7 @@ namespace LoggingWayMaster.Services
     public class EncounterIngestWorker(
     Lumina.GameData lumina,
     EncounterIngestQueue queue,
+    JobResultStore jobResultStore,
     IDbContextFactory<LoggingwayDbContext> dbFactory,
     ILogger<EncounterIngestWorker> logger) : BackgroundService
     {
@@ -405,6 +407,9 @@ new Modifiers(440, 420, 2780) };
                     UploadedBy = job.UploadedBy,
                     CritRate = 0f,
                 };
+                jobResultStore.TryComplete(job.JobId, new EncounterIngestResult(
+                EncounterId: encounter.Id,
+                    Rank: 0, TotalRanked: 0, PScore: (float)(2.5 * Potencies[Character] / Duration)));
                 db.EncounterPlayerStats.Add(stats);
                 await db.SaveChangesAsync(ct);
             }
