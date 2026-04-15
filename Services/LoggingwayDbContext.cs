@@ -1,6 +1,7 @@
 ﻿using LoggingWayMaster.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using System.Reflection.Emit;
 
 namespace LoggingWayMaster.Services
 {
@@ -10,6 +11,8 @@ namespace LoggingWayMaster.Services
         public DbSet<CharacterClaim> CharacterClaims => Set<CharacterClaim>();
         public DbSet<Encounter> Encounters => Set<Encounter>();
         public DbSet<EncounterPlayerStat> EncounterPlayerStats => Set<EncounterPlayerStat>();
+
+        public DbSet<LeaderboardEntry> LeaderboardEntries => Set<LeaderboardEntry>();
 
         //Map Model to database columns
         protected override void OnModelCreating(ModelBuilder b)
@@ -95,6 +98,30 @@ namespace LoggingWayMaster.Services
                 e.HasOne(s => s.CharacterClaim)
                     .WithMany(c => c.PlayerStats)
                     .HasForeignKey(s => s.Character);
+            });
+            b.Entity<LeaderboardEntry>(e =>
+            {
+                e.HasIndex(x => new { x.CfcId, x.JobId, x.DpsRank })//Index on Cfc+Job+Dps for rank
+                 .HasDatabaseName("Leaderboard_CfcJob_DpsRank");
+
+                e.HasIndex(x => new { x.PlayerId, x.JobId, x.CfcId })//Index+unique on Player+job+cfc for lookup+upsert
+                 .IsUnique()
+                 .HasDatabaseName("Leaderboard_Player_Job_Cfc");
+
+                e.HasOne(x => x.BestDpsEncounter)
+                 .WithMany()
+                 .HasForeignKey(x => x.BestDpsEncounterId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.BestHpsEncounter)
+                 .WithMany()
+                 .HasForeignKey(x => x.BestHpsEncounterId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.BestPScoreEncounter)
+                 .WithMany()
+                 .HasForeignKey(x => x.BestPScoreEncounterId)
+                 .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

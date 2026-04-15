@@ -1,4 +1,5 @@
 using LoggingWayMaster.Services;
+using LoggingWayMaster.Services.LoggingWayMaster.Services;
 using LoggingWayMaster.Stores;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,7 +24,8 @@ namespace LoggingWayMaster
             
             //Hosted Services(things that run continously in the background like the IngestWorker)
             builder.Services.AddHostedService<EncounterIngestWorker>();
-
+            builder.Services.AddHostedService<LeaderboardRefreshService>();//should have named it worker but whatever
+            builder.Services.AddHostedService<StatePurger>();
 
             //SQLite entities
             builder.Services.AddDbContextFactory<LoggingwayDbContext>(options =>

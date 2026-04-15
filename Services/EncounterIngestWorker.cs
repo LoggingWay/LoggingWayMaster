@@ -407,11 +407,27 @@ new Modifiers(440, 420, 2780) };
                     UploadedBy = job.UploadedBy,
                     CritRate = 0f,
                 };
-                jobResultStore.TryComplete(job.JobId, new EncounterIngestResult(
-                EncounterId: encounter.Id,
-                    Rank: 0, TotalRanked: 0, PScore: (float)(2.5 * Potencies[Character] / Duration)));
                 db.EncounterPlayerStats.Add(stats);
                 await db.SaveChangesAsync(ct);
+                var pScore = 2.5 * Potencies[Character] / Duration;
+
+                // Count how many existing entries beat this score for the same fight+job
+                var rank = await db.LeaderboardEntries
+                    .CountAsync(e =>
+                        e.CfcId == encounter.CfcId &&
+                        e.JobId == stats.JobId &&
+                        e.BestPScore > pScore, ct) + 1;
+
+                var totalRanked = await db.LeaderboardEntries
+                    .CountAsync(e =>
+                        e.CfcId == encounter.CfcId &&
+                        e.JobId == stats.JobId, ct) + 1; // +1 bc this is technically all the ranking+this new one that's not counted yet
+
+                jobResultStore.TryComplete(job.JobId, new EncounterIngestResult(
+                    EncounterId: encounter.Id,
+                    Rank: rank,
+                    TotalRanked: totalRanked,
+                    PScore: (float)pScore));
             }
 
             logger.LogInformation("Ingest job {JobId} persisted as encounter {EncounterId}",

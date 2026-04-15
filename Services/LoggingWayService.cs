@@ -270,32 +270,61 @@ namespace LoggingWayMaster.Services
             using (var db = await dbFactory.CreateDbContextAsync())
             {
 
-                // join stats with their encounter and character claim
-                var query = db.EncounterPlayerStats
-                    .Include(s => s.CharacterClaim)
-                    .Include(s => s.Encounter)
-                    .Where(s => s.Encounter.CfcId == (int)request.CfcId
-                             && s.CharacterClaim != null);
+                var query = db.LeaderboardEntries
+            .Where(e => e.CfcId == (int)request.CfcId);
 
-                
                 if (request.JobId != 0)
-                    query = query.Where(s => s.JobId == (int)request.JobId);
+                    query = query.Where(e => e.JobId == (int)request.JobId);
 
-                // For each character, keep only their best pscore run for this cfc_id
-                var bestScores = (await query.ToListAsync())//ToListAsync down there seem to make this untranslable?Memory issue probably
-                                .GroupBy(s => s.Character)
-                                .Select(g => g.OrderByDescending(s => s.TotalPScore).First())
-                                .OrderByDescending(s => s.TotalPScore)
-                                .ToList();
+                var totalRanked = await query.CountAsync(context.CancellationToken);
 
-                var totalRanked = bestScores.Count;
+                var entries = await query
+                    .OrderBy(e => e.PScoreRank)
+                    .Take(100)//TODO: implement pagination in proto, then update this
+                    .Select(e => new
+                    {
+                        e.BestPScore,
+                        e.PScoreRank,
+                        e.JobId,
+                        e.Character,
+                        CharClaim = e.CharacterClaim == null ? null : new
+                        {
+                            e.CharacterClaim!.CharName,
+                            e.CharacterClaim.HomeWorld,
+                            e.CharacterClaim.DataCenter,
+                            e.CharacterClaim.Id
+                        }
+                    })
+                    .ToListAsync(context.CancellationToken);
 
-                var entries = bestScores
-                    .Select((s, index) => s.CharacterClaim!.ToLeaderBoardEntry(s, rank: index + 1))
-                    .ToList();
+                var reply = new GetLeaderBoardReply
+                {
+                    TotalRanked = totalRanked
+                };
 
-                var reply = new GetLeaderBoardReply { TotalRanked = totalRanked };
-                reply.Entry.AddRange(entries);
+                foreach (var e in entries)
+                {
+                    var entry = new LeaderBoardEntry
+                    {
+                        Rank = e.PScoreRank,
+                        Psccore = (float)e.BestPScore,
+                        Jobid = (uint)e.JobId
+                    };
+
+                    if (e.CharClaim is not null)
+                    {
+                        entry.Char = new Character
+                        {
+                            Name = e.CharClaim.CharName,
+                            Homeworld = e.CharClaim.HomeWorld,
+                            Datacenter = e.CharClaim.DataCenter,
+                            PersistentKey = e.CharClaim.Id.ToString()
+                        };
+                    }
+
+                    reply.Entry.Add(entry);
+                }
+
                 return reply;
             }
         }
