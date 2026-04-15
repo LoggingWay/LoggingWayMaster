@@ -36,30 +36,30 @@ namespace LoggingWayMaster.Services
                 logger.LogInformation("Starting leaderboard refresh");
 
                 var aggregated = await db.EncounterPlayerStats
-                    .Include(s => s.Encounter)
-                    .Where(s => s.Encounter != null && s.Encounter.CfcId != null)
-                    .GroupBy(s => new { s.PlayerId, s.JobId, s.Encounter!.CfcId })
-                    .Select(g => new
-                    {
-                        g.Key.PlayerId,
-                        g.Key.JobId,
-                        g.Key.CfcId,
-                        PlayerName = g.OrderByDescending(x => x.CreatedAt).First().PlayerName,
-                        Character = g.OrderByDescending(x => x.CreatedAt).First().Character,
+    .Include(s => s.Encounter)
+    .Where(s => s.Encounter != null && s.Encounter.CfcId != null)
+    .GroupBy(s => new { s.PlayerId, s.JobId, s.Encounter!.CfcId })
+    .Select(g => new
+    {
+        g.Key.PlayerId,
+        g.Key.JobId,
+        g.Key.CfcId,
+        PlayerName = g.OrderByDescending(x => x.Id).First().PlayerName,
+        Character = g.OrderByDescending(x => x.Id).First().Character,
 
-                        BestDps = g.Max(x => x.Dps),
-                        BestDpsEncounterId = g.OrderByDescending(x => x.Dps).First().EncounterId,
+        BestDps = g.Max(x => x.Dps),
+        BestDpsEncounterId = g.OrderByDescending(x => x.Dps).First().EncounterId,
 
-                        BestHps = g.Max(x => x.Hps),
-                        BestHpsEncounterId = g.OrderByDescending(x => x.Hps).First().EncounterId,
+        BestHps = g.Max(x => x.Hps),
+        BestHpsEncounterId = g.OrderByDescending(x => x.Hps).First().EncounterId,
 
-                        BestPScore = g.Max(x => x.TotalPScore),
-                        BestPScoreEncounterId = g.OrderByDescending(x => x.TotalPScore).First().EncounterId,
+        BestPScore = g.Max(x => x.TotalPScore),
+        BestPScoreEncounterId = g.OrderByDescending(x => x.TotalPScore).First().EncounterId,
 
-                        TotalKills = g.Count(),
-                        AllDps = g.Select(x => x.Dps).ToList()
-                    })
-                    .ToListAsync(ct);
+        TotalKills = g.Count(),
+        AllDps = g.Select(x => x.Dps).ToList()
+    })
+    .ToListAsync(ct);
 
                 foreach (var row in aggregated)
                 {
