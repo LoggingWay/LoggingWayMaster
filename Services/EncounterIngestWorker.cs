@@ -398,7 +398,7 @@ new Modifiers(440, 420, 2780) };
             EncounterIngestResult? finalResult = null;
             foreach (var Character in Baselines.Keys)
             {
-                var character = db.CharacterClaims.FirstOrDefault(c => c.ClaimBy == job.UploadedBy);
+                var character = db.CharacterClaims.FirstOrDefault(c => c.ClaimBy == job.UploadedBy && (Join_Mapping.ContainsKey(Character) && Join_Mapping[Character].Name == c.CharName));
                 var stats = new EncounterPlayerStat
                 {
                     Character = character.Id, // This will have to be updated in case we are logging multiple characters at once... Ideally, this would be a character hash that uniquely identifies them in game (even when they change names).

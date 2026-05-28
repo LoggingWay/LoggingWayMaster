@@ -246,9 +246,6 @@ namespace LoggingWayMaster.Services
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // The job failed during processing. This is still a terminal answer for the
-                // client: report it as ready with the error field populated rather than
-                // surfacing an INTERNAL gRPC error and leaving the client to keep polling.
                 return new PollJobResultReply { Ready = true, Error = ex.Message };
             }
 
