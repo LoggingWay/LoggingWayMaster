@@ -26,7 +26,10 @@ namespace LoggingWayMaster.Services
                 catch (Exception ex)
                 {
                     logger.LogError(ex, "Failed to process ingest job {JobId}", job.JobId);
-                    // job is dropped for now,in the future we might want some kind salvage/retry system,this used to be handled by redis but w/e
+                    // Resolve the pending poll so the client stops waiting forever. If ProcessAsync
+                    // already completed/failed the job this is a no-op (TryFail returns false).
+                    // job payload is dropped for now,in the future we might want some kind salvage/retry system,this used to be handled by redis but w/e
+                    jobResultStore.TryFail(job.JobId, ex);
                 }
             }
         }
@@ -276,16 +279,16 @@ new Modifiers(440, 420, 2780) };
                                 double Internal_Magical_Buff_Multiplier = 1.0;
                                 List<string> Named = [];
                                 foreach (var Status in Message.SourceSnapshot.StatusEffects) if (Buffs.ContainsKey((int)Status.Id)) if (Status.SourceId == Player.GameobjectId)
-                                        {
-                                            Internal_Physical_Buff_Multiplier *= Buffs[(int)Status.Id].Physical;
-                                            Internal_Magical_Buff_Multiplier *= Buffs[(int)Status.Id].Magical;
-                                            Named.Add(lumina.GetExcelSheet<Lumina.Excel.Sheets.Status>().GetRow(Status.Id).Name.ExtractText());
-                                        }
-                                        else
-                                        {
-                                            External_Physical_Buff_Multiplier *= Buffs[(int)Status.Id].Physical;
-                                            External_Magical_Buff_Multiplier *= Buffs[(int)Status.Id].Magical;
-                                        }
+                                {
+                                    Internal_Physical_Buff_Multiplier *= Buffs[(int)Status.Id].Physical;
+                                    Internal_Magical_Buff_Multiplier *= Buffs[(int)Status.Id].Magical;
+                                    Named.Add(lumina.GetExcelSheet<Lumina.Excel.Sheets.Status>().GetRow(Status.Id).Name.ExtractText());
+                                }
+                                else
+                                {
+                                    External_Physical_Buff_Multiplier *= Buffs[(int)Status.Id].Physical;
+                                    External_Magical_Buff_Multiplier *= Buffs[(int)Status.Id].Magical;
+                                }
                                 foreach (var Status in Message.TargetSnapshot.StatusEffects)
                                 {
                                     // Chain Stratagem, Dokumori
@@ -346,10 +349,10 @@ new Modifiers(440, 420, 2780) };
                                         if (Message.DamageTaken.MainTarget && Estimated_Potency == 235) Estimated_Potency = 240;
                                         if (Message.DamageTaken.MainTarget && Estimated_Potency == 260) Estimated_Potency = 240;
                                         if (!Message.DamageTaken.MainTarget && Estimated_Potency == 240) if (Original_Potency_Estimation < 240)
-                                            {
-                                                Estimated_Potency = 235;
-                                            }
-                                            else Estimated_Potency = 268;
+                                        {
+                                            Estimated_Potency = 235;
+                                        }
+                                        else Estimated_Potency = 268;
                                     }
                                     if ((Name == "Fell Cleave" || Name == "Decimate") && Named.Contains("Inner Release")) Estimated_Potency *= 2.0;
                                     if (Guaranteed_Critical_Hit.Contains(Name)) Estimated_Potency *= 1.6;
@@ -376,13 +379,23 @@ new Modifiers(440, 420, 2780) };
                 UploadedAt = job.QueuedAt,
                 Payload = job.Payload,
             };
-            if (Baselines.Keys.Count > 0)
+            if (Baselines.Keys.Count == 0)
             {
-                db.Encounters.Add(encounter);
-                await db.SaveChangesAsync(ct);
+                // No rankable players could be derived from this payload (e.g. no usable
+                // DamageTaken events, or none passed the baseline filter).
+                jobResultStore.TryFail(job.JobId,
+                    new InvalidOperationException("No rankable encounter data could be derived from the submitted events"));
+
+                logger.LogWarning("Ingest job {JobId} produced no baselines; completed as failed", job.JobId);
+                return;
             }
+
+            db.Encounters.Add(encounter);
+            await db.SaveChangesAsync(ct);
+
             //Temp attributions, in real logic, this will be dervied from the parse itself
             var Duration = Math.Round((double)(Events.Last().TimestampEpochMs - Start)) / 1000.0;
+            EncounterIngestResult? finalResult = null;
             foreach (var Character in Baselines.Keys)
             {
                 var character = db.CharacterClaims.FirstOrDefault(c => c.ClaimBy == job.UploadedBy);
@@ -423,12 +436,18 @@ new Modifiers(440, 420, 2780) };
                         e.CfcId == encounter.CfcId &&
                         e.JobId == stats.JobId, ct) + 1; // +1 bc this is technically all the ranking+this new one that's not counted yet
 
-                jobResultStore.TryComplete(job.JobId, new EncounterIngestResult(
+                // PollJobResultReply carries a single encounter/rank/score, so we keep the
+                // last computed character's result and complete the job exactly once below.
+                finalResult = new EncounterIngestResult(
                     EncounterId: encounter.Id,
                     Rank: rank,
                     TotalRanked: totalRanked,
-                    PScore: (float)pScore));
+                    PScore: (float)pScore);
             }
+
+            // Single terminal completion for the job, guaranteed to run whenever Baselines
+            // was non-empty (the empty case returned earlier via TryFail).
+            jobResultStore.TryComplete(job.JobId, finalResult!);
 
             logger.LogInformation("Ingest job {JobId} persisted as encounter {EncounterId}",
                 job.JobId, encounter.Id);

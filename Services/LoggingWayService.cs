@@ -74,14 +74,17 @@ namespace LoggingWayMaster.Services
                     {
                         code = 1;
                     }
-                    var new_user = conn.Users.Add(new Entities.User {Id = Guid.Parse(user.Id),
-                                                                      Characters = auth2db,
-                                                                    Banned = false,});
+                    var new_user = conn.Users.Add(new Entities.User
+                    {
+                        Id = Guid.Parse(user.Id),
+                        Characters = auth2db,
+                        Banned = false,
+                    });
 
                     await conn.SaveChangesAsync();
-                        }
                 }
-                
+            }
+
             return new LoginReply { SessionID = session.SessionId, Code = code };
         }
 
@@ -126,7 +129,8 @@ namespace LoggingWayMaster.Services
                 throw new RpcException(new Status(StatusCode.FailedPrecondition, "characters:all scope was not granted"));
             if (Guid.Parse(user.Id) != user_session.XivAuthId)
                 throw new RpcException(new Status(StatusCode.PermissionDenied, "XivAuthId from session does not match XivAuthId from code exchange,please logout and login if you wish to change account"));
-            using (var db = await dbFactory.CreateDbContextAsync()){
+            using (var db = await dbFactory.CreateDbContextAsync())
+            {
 
                 // Fetch what we already have on record for this user
                 var existingClaims = await db.CharacterClaims
@@ -180,7 +184,7 @@ namespace LoggingWayMaster.Services
             }
         }
 
-        public override async Task<GetMyEncountersReply> GetMyEncounters(GetMyEncountersRequest request,ServerCallContext context)
+        public override async Task<GetMyEncountersReply> GetMyEncounters(GetMyEncountersRequest request, ServerCallContext context)
         {
             SessionStore.Session user_se = EnsureAuth(context);
             using (var conn = await dbFactory.CreateDbContextAsync())
@@ -234,8 +238,19 @@ namespace LoggingWayMaster.Services
             if (!Guid.TryParse(request.JobId, out var jobId))
                 throw new RpcException(new Status(StatusCode.InvalidArgument, "Invalid job_id"));
 
-            // wait 10 second before calling it
-            var result = await jobResultStore.WaitAsync(jobId, TimeSpan.FromSeconds(10), context.CancellationToken);
+            EncounterIngestResult? result;
+            try
+            {
+                // wait 10 second before calling it
+                result = await jobResultStore.WaitAsync(jobId, TimeSpan.FromSeconds(10), context.CancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // The job failed during processing. This is still a terminal answer for the
+                // client: report it as ready with the error field populated rather than
+                // surfacing an INTERNAL gRPC error and leaving the client to keep polling.
+                return new PollJobResultReply { Ready = true, Error = ex.Message };
+            }
 
             if (result is null)
                 return new PollJobResultReply { Ready = false };
@@ -260,9 +275,9 @@ namespace LoggingWayMaster.Services
                     throw new RpcException(new Status(StatusCode.NotFound, "Could not find EncounterId"));
                 if (stats.UploadedBy != user_se.XivAuthId)
                     throw new RpcException(new Status(StatusCode.PermissionDenied, "Naughty little user(UploadedBy and Session user ID does not match"));
-                return new GetEncountersStatsReply{ Playerstats = stats.ToProto()};
+                return new GetEncountersStatsReply { Playerstats = stats.ToProto() };
             }
-         }
+        }
 
         public override async Task<GetLeaderBoardReply> GetLeaderBoard(GetLeaderBoardRequest request, ServerCallContext context)
         {
