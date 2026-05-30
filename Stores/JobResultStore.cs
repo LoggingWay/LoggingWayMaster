@@ -21,36 +21,20 @@ namespace LoggingWayMaster.Stores
             _pending[jobId] = tcs;
             return tcs;
         }
-
         public bool TryComplete(Guid jobId, EncounterIngestResult result)
-        {
-            if (_pending.TryRemove(jobId, out var tcs))
-                return tcs.TrySetResult(result);
-            return false;
-        }
+            => _pending.TryGetValue(jobId, out var tcs) && tcs.TrySetResult(result);
 
         public bool TryFail(Guid jobId, Exception ex)
-        {
-            if (_pending.TryRemove(jobId, out var tcs))
-                return tcs.TrySetException(ex);
-            return false;
-        }
+            => _pending.TryGetValue(jobId, out var tcs) && tcs.TrySetException(ex);
 
-        // Called by PollJobResult — waits up to `timeout` for completion
-        public async Task<EncounterIngestResult?> WaitAsync(
-            Guid jobId, TimeSpan timeout, CancellationToken ct)
+        public async Task<EncounterIngestResult?> WaitAsync(Guid jobId, TimeSpan timeout, CancellationToken ct)
         {
             if (!_pending.TryGetValue(jobId, out var tcs))
-                return null; // already completed and removed, or unknown
-
-            try
-            {
-                return await tcs.Task.WaitAsync(timeout, ct);
-            }
-            catch (TimeoutException)
-            {
-                return null; // still processing
-            }
+                return null;                       // genuinely unknown job
+            try { return await tcs.Task.WaitAsync(timeout, ct); }
+            catch (TimeoutException) { return null; }   // still processing
         }
+
+        public void Remove(Guid jobId) => _pending.TryRemove(jobId, out _);
     }
 }
